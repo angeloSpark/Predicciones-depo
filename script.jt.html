@@ -1,0 +1,63 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+
+// Configuración opcional de Supabase (puedes dejarlo con tus llaves reales cuando las conectes)
+const SUPABASE_URL = 'TU_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'TU_SUPABASE_ANON_KEY';
+// const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function factorial(n) {
+    if (n === 0 || n === 1) return 1;
+    let acumulado = 1;
+    for (let i = 2; i <= n; i++) acumulado *= i;
+    return acumulado;
+}
+
+function poissonProbability(lambda, k) {
+    return (Math.exp(-lambda) * Math.pow(lambda, k)) / factorial(k);
+}
+
+document.getElementById('btnAnalizar').addEventListener('click', () => {
+    const localName = document.getElementById('selectLocal').value;
+    const visitaName = document.getElementById('selectVisita').value;
+    
+    const atkL = parseFloat(document.getElementById('atkLocal').value);
+    const defV = parseFloat(document.getElementById('defVisita').value);
+    const atkV = parseFloat(document.getElementById('atkVisita').value);
+    const defL = parseFloat(document.getElementById('defLocal').value);
+
+    const mediaLigaLocal = 1.35; // Constante de la liga
+
+    // 1. Cálculo de Goles Esperados (xG)
+    const xG_Local = atkL * defV * mediaLigaLocal;
+    const xG_Visita = atkV * defL * mediaLigaLocal;
+
+    let probLocalWin = 0;
+    let probEmpate = 0;
+    let probVisitaWin = 0;
+
+    // 2. Matriz de Poisson
+    for (let gl = 0; gl <= 5; gl++) {
+        for (let gv = 0; gv <= 5; gv++) {
+            const pL = poissonProbability(xG_Local, gl);
+            const pV = poissonProbability(xG_Visita, gv);
+            const totalProb = pL * pV;
+
+            if (gl > gv) probLocalWin += totalProb;
+            else if (gl === gv) probEmpate += totalProb;
+            else probVisitaWin += totalProb;
+        }
+    }
+
+    // 3. Renderizar resultados en pantalla
+    const container = document.getElementById('resultadoContainer');
+    const output = document.getElementById('outputContenido');
+    
+    container.classList.remove('hidden');
+    output.innerHTML = `
+        <div class="stat-row"><span>Goles Esperados (${localName}):</span> <strong>${xG_Local.toFixed(2)} xG</strong></div>
+        <div class="stat-row"><span>Goles Esperados (${visitaName}):</span> <strong>${xG_Visita.toFixed(2)} xG</strong></div>
+        <div class="stat-row"><span>Probabilidad Victoria (${localName}):</span> <strong>${(probLocalWin * 100).toFixed(1)}%</strong></div>
+        <div class="stat-row"><span>Probabilidad Empate:</span> <strong>${(probEmpate * 100).toFixed(1)}%</strong></div>
+        <div class="stat-row"><span>Probabilidad Victoria (${visitaName}):</span> <strong>${(probVisitaWin * 100).toFixed(1)}%</strong></div>
+    `;
+});
